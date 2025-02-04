@@ -13,7 +13,7 @@ $app->addRoutingMiddleware();
 $app->add(new BasepathMiddleware($app));
 $app->addErrorMIddleware(true, true, true);
 
-$app->get('/', function (Request $request, Response $response) {
+$app->get('/login', function (Request $request, Response $response) {
     $sql = 'SELECT cd_user, nm_login, ds_email FROM tb_user';
 
     try {
@@ -34,6 +34,37 @@ $app->get('/', function (Request $request, Response $response) {
         $response->getBody()->write(json_encode($error));
         return $response
             ->withHeader('Content-Type', 'application/json')
+            ->withStatus(500);
+    }
+});
+$app->post('/validarlogin', function (Request $request, Response $response) {
+    try {
+        $OPA = $request->getParsedBody();
+        $USUARIONOME = $OPA['nomeusuario'];
+        $USUARIOSENHA = $OPA['senhausuario'];
+
+        // Corrigindo a construção da string SQL
+        $sql = "SELECT NM_LOGIN, DS_PASSWORD FROM TB_USER WHERE NM_LOGIN = '$USUARIONOME' AND DS_PASSWORD = '$USUARIOSENHA'";
+
+        $db = new DB();
+        $conn = $db->connect();
+        $stmt = $conn->query($sql);
+        $users = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $db = null;
+
+        if (empty($users)) {
+            $response->getBody()->write(json_encode(["message" => "ERROR 404 - NOT FOUND"]));
+            return $response->withHeader('content-type', 'application/json')
+                ->withStatus(404);
+        }
+
+        $response->getBody()->write(json_encode($users));
+        return $response->withHeader('content-type', 'application/json')
+            ->withStatus(200);
+    } catch (PDOException $e) {
+        $error = array("message" => $e->getMessage());
+        $response->getBody()->write(json_encode($error));
+        return $response->withHeader('content-type', 'application/json')
             ->withStatus(500);
     }
 });
